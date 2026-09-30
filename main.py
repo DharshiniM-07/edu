@@ -1,4 +1,5 @@
 import os
+import time
 from dotenv import load_dotenv
 
 from fastapi import FastAPI, Request, Form
@@ -60,18 +61,28 @@ def ask_gemini(prompt: str) -> str:
             "Please add your GEMINI_API_KEY in the .env file."
         )
 
-    try:
+    for attempt in range(3):
+        try:
 
-        response = client.models.generate_content(
-            model="gemini-3.8-flash",
-            contents=prompt
-        )
+            response = client.models.generate_content(
+                model="gemini-3.8-flash",
+                contents=prompt
+            )
 
-        return response.text
+            return response.text
 
-    except Exception as e:
+        except Exception as e:
 
-        return f"AI Error: {str(e)}"
+            error_message = str(e)
+
+            if "503" in error_message or "UNAVAILABLE" in error_message:
+                if attempt < 2:
+                    time.sleep(3)
+                    continue
+
+            return f"AI Error: {error_message}"
+
+    return "AI is temporarily unavailable. Please try again."
 
 
 # --------------------------------------------------
